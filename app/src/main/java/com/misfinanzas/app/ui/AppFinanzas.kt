@@ -10,7 +10,9 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AccountBox
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.SnackbarDuration
@@ -44,11 +46,12 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.misfinanzas.app.data.Movimiento
+import com.misfinanzas.app.data.TipoMovimiento
 import java.time.YearMonth
 
 /** Estado del editor: null = cerrado; Nuevo = crear; Editar = modificar uno existente. */
 sealed interface Editor {
-    data object Nuevo : Editor
+    data class Nuevo(val tipo: TipoMovimiento = TipoMovimiento.GASTO) : Editor
     data class Editar(val movimiento: Movimiento) : Editor
 }
 
@@ -64,6 +67,8 @@ fun AppFinanzas(
     val mes by vm.mes.collectAsStateWithLifecycle()
     val estado by vm.estadoMes.collectAsStateWithLifecycle()
     val historico by vm.historico.collectAsStateWithLifecycle()
+    val plan by vm.plan.collectAsStateWithLifecycle()
+    val ahorrosPorCategoria by vm.ahorrosPorCategoria.collectAsStateWithLifecycle()
 
     var pestana by rememberSaveable { mutableStateOf(0) }
     var editor by remember { mutableStateOf<Editor?>(null) }
@@ -105,6 +110,18 @@ fun AppFinanzas(
                 NavigationBarItem(
                     selected = pestana == 1,
                     onClick = { pestana = 1 },
+                    icon = { Icon(Icons.Filled.AccountBox, contentDescription = null) },
+                    label = { Text("Sueldo") },
+                )
+                NavigationBarItem(
+                    selected = pestana == 2,
+                    onClick = { pestana = 2 },
+                    icon = { Icon(Icons.Filled.Star, contentDescription = null) },
+                    label = { Text("Ahorros") },
+                )
+                NavigationBarItem(
+                    selected = pestana == 3,
+                    onClick = { pestana = 3 },
                     icon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = null) },
                     label = { Text("Movimientos") },
                 )
@@ -112,17 +129,38 @@ fun AppFinanzas(
         },
         snackbarHost = { SnackbarHost(snackbar) },
         floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = { editor = Editor.Nuevo },
-                icon = { Icon(Icons.Filled.Add, contentDescription = null) },
-                text = { Text("Agregar") },
-            )
+            if (pestana != 1) {
+                ExtendedFloatingActionButton(
+                    onClick = { editor = Editor.Nuevo() },
+                    icon = { Icon(Icons.Filled.Add, contentDescription = null) },
+                    text = { Text("Agregar") },
+                )
+            }
         },
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             SelectorMes(mes, onAnterior = vm::mesAnterior, onSiguiente = vm::mesSiguiente)
             when (pestana) {
                 0 -> PantallaResumen(estado, historico)
+                1 -> PantallaSueldo(
+                    plan = plan,
+                    mes = mes,
+                    estado = estado,
+                    onGuardarPlan = { vm.guardarPlan(it); avisar("Plan guardado") },
+                    onRegistrarMes = {
+                        vm.guardarPlan(it)
+                        vm.registrarSueldoDelMes(it)
+                        avisar("Sueldo y ahorro registrados en ${mes.texto()}")
+                    },
+                )
+                2 -> PantallaAhorros(
+                    plan = plan,
+                    estado = estado,
+                    historico = historico,
+                    porCategoria = ahorrosPorCategoria,
+                    onGuardarPlan = { vm.guardarPlan(it); avisar("Meta guardada") },
+                    onAgregar = { editor = Editor.Nuevo(it) },
+                )
                 else -> PantallaMovimientos(estado.movimientos, onSeleccionar = { editor = Editor.Editar(it) })
             }
         }
@@ -131,6 +169,7 @@ fun AppFinanzas(
     editor?.let { e ->
         EditorMovimiento(
             existente = (e as? Editor.Editar)?.movimiento,
+            tipoInicial = (e as? Editor.Nuevo)?.tipo ?: TipoMovimiento.GASTO,
             mesActual = mes,
             onGuardar = {
                 vm.guardar(it)

@@ -21,6 +21,14 @@ interface MovimientoDao {
     @Query("UPDATE movimientos SET usuarioId = :usuarioId WHERE usuarioId = ''")
     suspend fun adoptarSinDueno(usuarioId: String)
 
+    /** Ahorro neto (ahorros − retiros) agrupado por categoría, de todos los meses. */
+    @Query(
+        "SELECT categoria, SUM(CASE WHEN tipo = 'AHORRO' THEN monto ELSE -monto END) AS total " +
+            "FROM movimientos WHERE usuarioId = :usuarioId AND tipo IN ('AHORRO', 'RETIRO_AHORRO') " +
+            "GROUP BY categoria ORDER BY total DESC"
+    )
+    fun ahorrosPorCategoria(usuarioId: String): Flow<List<TotalPorCategoria>>
+
     @Upsert
     suspend fun guardar(movimiento: Movimiento)
 

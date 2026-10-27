@@ -41,6 +41,7 @@ private const val MS_POR_DIA = 86_400_000L
 @Composable
 fun EditorMovimiento(
     existente: Movimiento?,
+    tipoInicial: TipoMovimiento,
     mesActual: YearMonth,
     onGuardar: (Movimiento) -> Unit,
     onEliminar: (Movimiento) -> Unit,
@@ -52,7 +53,7 @@ fun EditorMovimiento(
         if (YearMonth.from(hoy) == mesActual) hoy.toEpochDay() else mesActual.atDay(1).toEpochDay()
     }
 
-    var tipo by remember { mutableStateOf(existente?.tipo ?: TipoMovimiento.GASTO) }
+    var tipo by remember { mutableStateOf(existente?.tipo ?: tipoInicial) }
     var montoTexto by remember {
         mutableStateOf(existente?.monto?.let { if (it % 1.0 == 0.0) it.toLong().toString() else it.toString() } ?: "")
     }

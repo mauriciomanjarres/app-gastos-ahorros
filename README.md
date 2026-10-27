@@ -8,6 +8,11 @@ Los movimientos se guardan en el teléfono; el inicio de sesión usa Firebase (r
 - **Cuenta con correo (Firebase Authentication)**: registro e inicio de sesión con correo y contraseña,
   y «¿Olvidaste tu contraseña?» envía un enlace de recuperación al correo. Los movimientos se guardan
   en el teléfono, separados por cuenta.
+- **Sueldo**: escribes tu sueldo mensual, eliges cuánto ahorrar (porcentaje o monto fijo) y ves
+  cuánto te queda para gastar y cuánto puedes gastar todavía según tus gastos del mes. Con un toque
+  registras el sueldo y el ahorro del mes.
+- **Ahorros**: total ahorrado, meta de ahorro con progreso y meses estimados para lograrla,
+  y botones para agregar o retirar ahorro.
 - **Registrar movimientos** de cuatro tipos: Ingreso, Gasto, Ahorro y Retiro de ahorro, con monto,
   categoría, descripción y fecha. Toca un movimiento para editarlo o eliminarlo.
 - **Resumen del mes**: ingresos, gastos, lo ahorrado, dinero disponible

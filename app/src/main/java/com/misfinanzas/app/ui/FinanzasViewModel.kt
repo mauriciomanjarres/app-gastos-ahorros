@@ -5,6 +5,9 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.misfinanzas.app.data.AppDatabase
 import com.misfinanzas.app.data.Movimiento
+import com.misfinanzas.app.data.Plan
+import com.misfinanzas.app.data.PlanStore
+import com.misfinanzas.app.data.TotalPorCategoria
 import com.misfinanzas.app.data.TipoMovimiento
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,6 +20,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 import java.time.YearMonth
 
 data class Resumen(
@@ -45,9 +49,16 @@ data class EstadoMes(
     val gastosPorCategoria: List<Pair<String, Double>> = emptyList(),
 )
 
+const val DESCRIPCION_SUELDO = "Sueldo base"
+const val DESCRIPCION_AHORRO = "Ahorro del sueldo"
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class FinanzasViewModel(app: Application) : AndroidViewModel(app) {
     private val dao = AppDatabase.get(app).movimientoDao()
+    private val planStore = PlanStore(app)
+
+    private val _plan = MutableStateFlow(Plan())
+    val plan: StateFlow<Plan> = _plan.asStateFlow()
 
     private val _mes = MutableStateFlow(YearMonth.now())
     val mes: StateFlow<YearMonth> = _mes.asStateFlow()
@@ -59,6 +70,7 @@ class FinanzasViewModel(app: Application) : AndroidViewModel(app) {
         if (usuarioId.value == uid) return
         viewModelScope.launch {
             dao.adoptarSinDueno(uid)
+            _plan.value = planStore.leer(uid)
             usuarioId.value = uid
         }
     }
@@ -85,6 +97,54 @@ class FinanzasViewModel(app: Application) : AndroidViewModel(app) {
         .flatMapLatest { dao.totalesHistoricos(it) }
         .map { lista -> Resumen.de(lista.associate { it.tipo to it.total }) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Resumen())
+
+    val ahorrosPorCategoria: StateFlow<List<TotalPorCategoria>> = usuarioId
+        .flatMapLatest { dao.ahorrosPorCategoria(it) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    fun guardarPlan(plan: Plan) {
+        _plan.value = plan
+        if (usuarioId.value.isNotEmpty()) planStore.guardar(usuarioId.value, plan)
+    }
+
+    /**
+     * Registra (o actualiza) en el mes visto el ingreso del sueldo y el ahorro del plan,
+     * para que el resumen y el balance los tengan en cuenta.
+     */
+    fun registrarSueldoDelMes(plan: Plan) = viewModelScope.launch {
+        val m = _mes.value
+        val hoy = LocalDate.now()
+        val fecha = (if (YearMonth.from(hoy) == m) hoy else m.atDay(1)).toEpochDay()
+        val delMes = estadoMes.value.movimientos
+        val sueldoPrevio = delMes.firstOrNull { it.descripcion == DESCRIPCION_SUELDO }
+        val ahorroPrevio = delMes.firstOrNull { it.descripcion == DESCRIPCION_AHORRO }
+        dao.guardar(
+            Movimiento(
+                id = sueldoPrevio?.id ?: 0,
+                tipo = TipoMovimiento.INGRESO,
+                monto = plan.sueldo,
+                categoria = "Salario",
+                descripcion = DESCRIPCION_SUELDO,
+                fecha = sueldoPrevio?.fecha ?: fecha,
+                usuarioId = usuarioId.value,
+            )
+        )
+        if (plan.ahorroMensual > 0) {
+            dao.guardar(
+                Movimiento(
+                    id = ahorroPrevio?.id ?: 0,
+                    tipo = TipoMovimiento.AHORRO,
+                    monto = plan.ahorroMensual,
+                    categoria = ahorroPrevio?.categoria ?: "Meta personal",
+                    descripcion = DESCRIPCION_AHORRO,
+                    fecha = ahorroPrevio?.fecha ?: fecha,
+                    usuarioId = usuarioId.value,
+                )
+            )
+        } else if (ahorroPrevio != null) {
+            dao.eliminar(ahorroPrevio)
+        }
+    }
 
     fun mesAnterior() = _mes.update { it.minusMonths(1) }
     fun mesSiguiente() = _mes.update { it.plusMonths(1) }

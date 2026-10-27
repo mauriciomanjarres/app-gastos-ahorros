@@ -39,3 +39,8 @@ data class TotalPorTipo(
     val tipo: TipoMovimiento,
     val total: Double,
 )
+
+data class TotalPorCategoria(
+    val categoria: String,
+    val total: Double,
+)
