@@ -1,5 +1,6 @@
 package com.misfinanzas.app.data
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -29,6 +30,9 @@ data class Movimiento(
     val descripcion: String = "",
     /** Fecha como LocalDate.toEpochDay(). */
     val fecha: Long,
+    /** uid de Firebase del dueño del movimiento. */
+    @ColumnInfo(defaultValue = "")
+    val usuarioId: String = "",
 )
 
 data class TotalPorTipo(

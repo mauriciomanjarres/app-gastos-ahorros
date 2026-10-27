@@ -9,13 +9,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -35,19 +36,33 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+
+private enum class Modo { INGRESAR, REGISTRARSE, RECUPERAR }
 
 @Composable
-fun PantallaAcceso(vm: SesionViewModel, registro: Boolean) {
+fun PantallaAcceso(vm: SesionViewModel) {
+    val acceso by vm.acceso.collectAsStateWithLifecycle()
+
+    var modo by rememberSaveable { mutableStateOf(Modo.INGRESAR) }
     var nombre by rememberSaveable { mutableStateOf("") }
-    var usuario by rememberSaveable { mutableStateOf(if (registro) "" else vm.usuario) }
+    var correo by rememberSaveable { mutableStateOf("") }
     var contrasena by rememberSaveable { mutableStateOf("") }
     var confirmacion by rememberSaveable { mutableStateOf("") }
-    var error by rememberSaveable { mutableStateOf<String?>(null) }
-    var confirmarReinicio by rememberSaveable { mutableStateOf(false) }
 
-    val enviar = {
-        error = if (registro) vm.registrar(nombre, usuario, contrasena, confirmacion)
-        else vm.iniciarSesion(usuario, contrasena)
+    fun cambiarModo(nuevo: Modo) {
+        modo = nuevo
+        contrasena = ""
+        confirmacion = ""
+        vm.limpiarMensajes()
+    }
+
+    val enviar: () -> Unit = {
+        when (modo) {
+            Modo.INGRESAR -> vm.iniciarSesion(correo, contrasena)
+            Modo.REGISTRARSE -> vm.registrar(nombre, correo, contrasena, confirmacion)
+            Modo.RECUPERAR -> vm.recuperarContrasena(correo)
+        }
     }
 
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -69,8 +84,11 @@ fun PantallaAcceso(vm: SesionViewModel, registro: Boolean) {
                 color = MaterialTheme.colorScheme.primary,
             )
             Text(
-                if (registro) "Crea tu cuenta para proteger tu información. Todo se guarda solo en este teléfono."
-                else "Hola de nuevo, ${vm.nombre}. Ingresa para ver tus finanzas.",
+                when (modo) {
+                    Modo.INGRESAR -> "Ingresa con tu correo para ver tus finanzas."
+                    Modo.REGISTRARSE -> "Crea tu cuenta con tu correo. Si olvidas la contraseña, podrás recuperarla desde ahí."
+                    Modo.RECUPERAR -> "Escribe tu correo y te enviaremos un enlace para crear una contraseña nueva."
+                },
                 textAlign = TextAlign.Center,
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -78,60 +96,72 @@ fun PantallaAcceso(vm: SesionViewModel, registro: Boolean) {
             Spacer(Modifier.height(8.dp))
 
             val ancho = Modifier.widthIn(max = 480.dp).fillMaxWidth()
-            if (registro) {
+            val habilitado = !acceso.cargando
+
+            if (modo == Modo.REGISTRARSE) {
                 OutlinedTextField(
-                    value = nombre, onValueChange = { nombre = it; error = null },
-                    label = { Text("Tu nombre") }, singleLine = true, modifier = ancho,
+                    value = nombre, onValueChange = { nombre = it; vm.limpiarMensajes() },
+                    label = { Text("Tu nombre") }, singleLine = true, modifier = ancho, enabled = habilitado,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                 )
             }
             OutlinedTextField(
-                value = usuario, onValueChange = { usuario = it; error = null },
-                label = { Text("Usuario") }, singleLine = true, modifier = ancho,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
+                value = correo, onValueChange = { correo = it.trim(); vm.limpiarMensajes() },
+                label = { Text("Correo electrónico") }, singleLine = true, modifier = ancho, enabled = habilitado,
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Email,
+                    imeAction = if (modo == Modo.RECUPERAR) ImeAction.Done else ImeAction.Next,
+                ),
+                keyboardActions = KeyboardActions(onDone = { enviar() }),
             )
-            CampoContrasena(
-                valor = contrasena, onCambio = { contrasena = it; error = null },
-                etiqueta = "Contraseña", modifier = ancho,
-                ultimo = !registro, onListo = enviar,
-            )
-            if (registro) {
+            if (modo != Modo.RECUPERAR) {
                 CampoContrasena(
-                    valor = confirmacion, onCambio = { confirmacion = it; error = null },
-                    etiqueta = "Repite la contraseña", modifier = ancho,
+                    valor = contrasena, onCambio = { contrasena = it; vm.limpiarMensajes() },
+                    etiqueta = "Contraseña", modifier = ancho, habilitado = habilitado,
+                    ultimo = modo == Modo.INGRESAR, onListo = enviar,
+                )
+            }
+            if (modo == Modo.REGISTRARSE) {
+                CampoContrasena(
+                    valor = confirmacion, onCambio = { confirmacion = it; vm.limpiarMensajes() },
+                    etiqueta = "Repite la contraseña", modifier = ancho, habilitado = habilitado,
                     ultimo = true, onListo = enviar,
                 )
             }
 
-            error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            acceso.error?.let { Text(it, color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center) }
+            acceso.aviso?.let { Text(it, color = MaterialTheme.colorScheme.primary, textAlign = TextAlign.Center) }
 
-            Button(onClick = enviar, modifier = ancho.height(52.dp)) {
-                Text(if (registro) "Crear cuenta" else "Ingresar")
+            Button(onClick = enviar, enabled = habilitado, modifier = ancho.height(52.dp)) {
+                if (acceso.cargando) {
+                    CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
+                } else {
+                    Text(
+                        when (modo) {
+                            Modo.INGRESAR -> "Ingresar"
+                            Modo.REGISTRARSE -> "Crear cuenta"
+                            Modo.RECUPERAR -> "Enviar enlace"
+                        }
+                    )
+                }
             }
 
-            if (!registro) {
-                TextButton(onClick = { confirmarReinicio = true }) { Text("¿Olvidaste tu contraseña?") }
+            when (modo) {
+                Modo.INGRESAR -> {
+                    TextButton(onClick = { cambiarModo(Modo.RECUPERAR) }, enabled = habilitado) {
+                        Text("¿Olvidaste tu contraseña?")
+                    }
+                    TextButton(onClick = { cambiarModo(Modo.REGISTRARSE) }, enabled = habilitado) {
+                        Text("¿No tienes cuenta? Regístrate")
+                    }
+                }
+                Modo.REGISTRARSE, Modo.RECUPERAR -> {
+                    TextButton(onClick = { cambiarModo(Modo.INGRESAR) }, enabled = habilitado) {
+                        Text("Ya tengo cuenta: ingresar")
+                    }
+                }
             }
         }
-    }
-
-    if (confirmarReinicio) {
-        AlertDialog(
-            onDismissRequest = { confirmarReinicio = false },
-            title = { Text("¿Empezar de cero?") },
-            text = {
-                Text(
-                    "Por seguridad la contraseña no se puede recuperar. Puedes borrar la cuenta y " +
-                        "todos los movimientos guardados para crear una cuenta nueva."
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = { confirmarReinicio = false; vm.reiniciarTodo() }) {
-                    Text("Borrar todo", color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = { TextButton(onClick = { confirmarReinicio = false }) { Text("Cancelar") } },
-        )
     }
 }
 
@@ -141,6 +171,7 @@ private fun CampoContrasena(
     onCambio: (String) -> Unit,
     etiqueta: String,
     modifier: Modifier,
+    habilitado: Boolean,
     ultimo: Boolean,
     onListo: () -> Unit,
 ) {
@@ -150,6 +181,7 @@ private fun CampoContrasena(
         onValueChange = onCambio,
         label = { Text(etiqueta) },
         singleLine = true,
+        enabled = habilitado,
         modifier = modifier,
         visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
         trailingIcon = {

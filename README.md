@@ -1,12 +1,13 @@
 # Mis Finanzas
 
 App Android para llevar tus **ingresos, gastos y ahorros** mes a mes y ver tu **balance general**.
-Todo se guarda en el teléfono (base de datos local, sin internet ni cuentas).
+Los movimientos se guardan en el teléfono; el inicio de sesión usa Firebase (requiere internet para entrar).
 
 ## Qué hace
 
-- **Cuenta con contraseña**: la primera vez creas tu usuario y contraseña; después la app pide
-  iniciar sesión. La contraseña se guarda cifrada (hash PBKDF2) solo en el teléfono.
+- **Cuenta con correo (Firebase Authentication)**: registro e inicio de sesión con correo y contraseña,
+  y «¿Olvidaste tu contraseña?» envía un enlace de recuperación al correo. Los movimientos se guardan
+  en el teléfono, separados por cuenta.
 - **Registrar movimientos** de cuatro tipos: Ingreso, Gasto, Ahorro y Retiro de ahorro, con monto,
   categoría, descripción y fecha. Toca un movimiento para editarlo o eliminarlo.
 - **Resumen del mes**: ingresos, gastos, lo ahorrado, dinero disponible
@@ -31,4 +32,4 @@ el gestor de archivos con el que lo abras.
 
 ## Tecnología
 
-Kotlin · Jetpack Compose (Material 3) · Room · ViewModel + Flow. minSdk 26 (Android 8.0).
+Kotlin · Jetpack Compose (Material 3) · Room · Firebase Auth · ViewModel + Flow. minSdk 26 (Android 8.0).

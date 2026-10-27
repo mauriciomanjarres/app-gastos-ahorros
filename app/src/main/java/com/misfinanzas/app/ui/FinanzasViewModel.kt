@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -51,8 +52,19 @@ class FinanzasViewModel(app: Application) : AndroidViewModel(app) {
     private val _mes = MutableStateFlow(YearMonth.now())
     val mes: StateFlow<YearMonth> = _mes.asStateFlow()
 
-    val estadoMes: StateFlow<EstadoMes> = _mes
-        .flatMapLatest { m -> dao.delPeriodo(m.atDay(1).toEpochDay(), m.atEndOfMonth().toEpochDay()) }
+    private val usuarioId = MutableStateFlow("")
+
+    /** Cambia los datos mostrados a los del usuario que inició sesión. */
+    fun usarCuenta(uid: String) {
+        if (usuarioId.value == uid) return
+        viewModelScope.launch {
+            dao.adoptarSinDueno(uid)
+            usuarioId.value = uid
+        }
+    }
+
+    val estadoMes: StateFlow<EstadoMes> = combine(usuarioId, _mes) { uid, m -> uid to m }
+        .flatMapLatest { (uid, m) -> dao.delPeriodo(uid, m.atDay(1).toEpochDay(), m.atEndOfMonth().toEpochDay()) }
         .map { lista ->
             EstadoMes(
                 movimientos = lista,
@@ -69,13 +81,16 @@ class FinanzasViewModel(app: Application) : AndroidViewModel(app) {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), EstadoMes())
 
     /** Totales de todos los meses: balance general acumulado. */
-    val historico: StateFlow<Resumen> = dao.totalesHistoricos()
+    val historico: StateFlow<Resumen> = usuarioId
+        .flatMapLatest { dao.totalesHistoricos(it) }
         .map { lista -> Resumen.de(lista.associate { it.tipo to it.total }) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Resumen())
 
     fun mesAnterior() = _mes.update { it.minusMonths(1) }
     fun mesSiguiente() = _mes.update { it.plusMonths(1) }
 
-    fun guardar(movimiento: Movimiento) = viewModelScope.launch { dao.guardar(movimiento) }
+    fun guardar(movimiento: Movimiento) = viewModelScope.launch {
+        dao.guardar(movimiento.copy(usuarioId = usuarioId.value))
+    }
     fun eliminar(movimiento: Movimiento) = viewModelScope.launch { dao.eliminar(movimiento) }
 }

@@ -4,12 +4,20 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [Movimiento::class], version = 1, exportSchema = false)
+@Database(entities = [Movimiento::class], version = 2, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun movimientoDao(): MovimientoDao
 
     companion object {
+        private val MIGRACION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE movimientos ADD COLUMN usuarioId TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
         @Volatile
         private var instancia: AppDatabase? = null
 
@@ -19,7 +27,7 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "finanzas.db"
-                ).build().also { instancia = it }
+                ).addMigrations(MIGRACION_1_2).build().also { instancia = it }
             }
     }
 }
