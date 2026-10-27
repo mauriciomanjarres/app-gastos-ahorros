@@ -4,10 +4,12 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Barras de crecimiento -->
-    <path android:fillColor="#FFFFFF" android:pathData="M34,62h8v14h-8z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M48,52h8v24h-8z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M62,40h8v36h-8z" />
-    <!-- Moneda -->
-    <path android:fillColor="#FFD54F" android:pathData="M72,34m-8,0a8,8 0,1 1,16 0a8,8 0,1 1,-16 0" />
+    <!-- Letra M -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M34,70 L34,32 L42,32 L54,50 L66,32 L74,32 L74,70 L66,70 L66,46 L54,63 L42,46 L42,70 Z" />
+    <!-- Línea de acento verde -->
+    <path
+        android:fillColor="#34D399"
+        android:pathData="M42,75 L66,75 L66,79 L42,79 Z" />
 </vector>

@@ -20,6 +20,8 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import com.misfinanzas.app.ui.theme.LogoM
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -82,6 +84,8 @@ fun AppFinanzas(
     Scaffold(
         topBar = {
             TopAppBar(
+                navigationIcon = { LogoM(36.dp, Modifier.padding(start = 12.dp, end = 4.dp)) },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
                 title = {
                     Column {
                         Text("Mis Finanzas", fontWeight = FontWeight.Bold)
@@ -141,7 +145,7 @@ fun AppFinanzas(
         Column(Modifier.fillMaxSize().padding(padding)) {
             SelectorMes(mes, onAnterior = vm::mesAnterior, onSiguiente = vm::mesSiguiente)
             when (pestana) {
-                0 -> PantallaResumen(estado, historico)
+                0 -> PantallaResumen(plan, estado, historico)
                 1 -> PantallaSueldo(
                     plan = plan,
                     mes = mes,

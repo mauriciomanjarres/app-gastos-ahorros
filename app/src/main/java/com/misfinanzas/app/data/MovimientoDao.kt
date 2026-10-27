@@ -29,6 +29,12 @@ interface MovimientoDao {
     )
     fun ahorrosPorCategoria(usuarioId: String): Flow<List<TotalPorCategoria>>
 
+    @Query(
+        "SELECT * FROM movimientos WHERE usuarioId = :usuarioId AND descripcion = :descripcion " +
+            "AND fecha BETWEEN :desde AND :hasta ORDER BY id"
+    )
+    suspend fun buscarPorDescripcion(usuarioId: String, descripcion: String, desde: Long, hasta: Long): List<Movimiento>
+
     @Upsert
     suspend fun guardar(movimiento: Movimiento)
 

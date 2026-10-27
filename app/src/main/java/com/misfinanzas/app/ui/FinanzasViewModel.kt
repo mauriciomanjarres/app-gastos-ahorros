@@ -20,6 +20,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.time.LocalDate
 import java.time.YearMonth
 
@@ -64,6 +66,7 @@ class FinanzasViewModel(app: Application) : AndroidViewModel(app) {
     val mes: StateFlow<YearMonth> = _mes.asStateFlow()
 
     private val usuarioId = MutableStateFlow("")
+    private val registroMutex = Mutex()
 
     /** Cambia los datos mostrados a los del usuario que inició sesión. */
     fun usarCuenta(uid: String) {
@@ -112,37 +115,49 @@ class FinanzasViewModel(app: Application) : AndroidViewModel(app) {
      * para que el resumen y el balance los tengan en cuenta.
      */
     fun registrarSueldoDelMes(plan: Plan) = viewModelScope.launch {
-        val m = _mes.value
-        val hoy = LocalDate.now()
-        val fecha = (if (YearMonth.from(hoy) == m) hoy else m.atDay(1)).toEpochDay()
-        val delMes = estadoMes.value.movimientos
-        val sueldoPrevio = delMes.firstOrNull { it.descripcion == DESCRIPCION_SUELDO }
-        val ahorroPrevio = delMes.firstOrNull { it.descripcion == DESCRIPCION_AHORRO }
-        dao.guardar(
-            Movimiento(
-                id = sueldoPrevio?.id ?: 0,
-                tipo = TipoMovimiento.INGRESO,
-                monto = plan.sueldo,
-                categoria = "Salario",
-                descripcion = DESCRIPCION_SUELDO,
-                fecha = sueldoPrevio?.fecha ?: fecha,
-                usuarioId = usuarioId.value,
-            )
-        )
-        if (plan.ahorroMensual > 0) {
+        registroMutex.withLock {
+            val m = _mes.value
+            val uid = usuarioId.value
+            val hoy = LocalDate.now()
+            val fecha = (if (YearMonth.from(hoy) == m) hoy else m.atDay(1)).toEpochDay()
+            val desde = m.atDay(1).toEpochDay()
+            val hasta = m.atEndOfMonth().toEpochDay()
+
+            // Se busca en la base de datos (no en la pantalla) y se borran duplicados, así
+            // tocar el botón varias veces nunca suma el sueldo dos veces.
+            val sueldos = dao.buscarPorDescripcion(uid, DESCRIPCION_SUELDO, desde, hasta)
+            val ahorros = dao.buscarPorDescripcion(uid, DESCRIPCION_AHORRO, desde, hasta)
+            sueldos.drop(1).forEach { dao.eliminar(it) }
+            ahorros.drop(1).forEach { dao.eliminar(it) }
+            val sueldoPrevio = sueldos.firstOrNull()
+            val ahorroPrevio = ahorros.firstOrNull()
+
             dao.guardar(
                 Movimiento(
-                    id = ahorroPrevio?.id ?: 0,
-                    tipo = TipoMovimiento.AHORRO,
-                    monto = plan.ahorroMensual,
-                    categoria = ahorroPrevio?.categoria ?: "Meta personal",
-                    descripcion = DESCRIPCION_AHORRO,
-                    fecha = ahorroPrevio?.fecha ?: fecha,
-                    usuarioId = usuarioId.value,
+                    id = sueldoPrevio?.id ?: 0,
+                    tipo = TipoMovimiento.INGRESO,
+                    monto = plan.sueldo,
+                    categoria = "Salario",
+                    descripcion = DESCRIPCION_SUELDO,
+                    fecha = sueldoPrevio?.fecha ?: fecha,
+                    usuarioId = uid,
                 )
             )
-        } else if (ahorroPrevio != null) {
-            dao.eliminar(ahorroPrevio)
+            if (plan.ahorroMensual > 0) {
+                dao.guardar(
+                    Movimiento(
+                        id = ahorroPrevio?.id ?: 0,
+                        tipo = TipoMovimiento.AHORRO,
+                        monto = plan.ahorroMensual,
+                        categoria = ahorroPrevio?.categoria ?: "Meta personal",
+                        descripcion = DESCRIPCION_AHORRO,
+                        fecha = ahorroPrevio?.fecha ?: fecha,
+                        usuarioId = uid,
+                    )
+                )
+            } else if (ahorroPrevio != null) {
+                dao.eliminar(ahorroPrevio)
+            }
         }
     }
 

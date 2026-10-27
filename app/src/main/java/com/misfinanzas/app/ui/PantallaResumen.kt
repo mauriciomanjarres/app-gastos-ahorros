@@ -16,18 +16,22 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.misfinanzas.app.data.Plan
 import com.misfinanzas.app.data.TipoMovimiento
+import com.misfinanzas.app.ui.theme.TarjetaDestacada
 import com.misfinanzas.app.ui.theme.colorDe
 
 @Composable
-fun PantallaResumen(estado: EstadoMes, historico: Resumen) {
+fun PantallaResumen(plan: Plan, estado: EstadoMes, historico: Resumen) {
     val r = estado.resumen
     Column(
         Modifier
@@ -36,54 +40,83 @@ fun PantallaResumen(estado: EstadoMes, historico: Resumen) {
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        // Tarjeta principal: dinero disponible del mes
-        Card(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Column(Modifier.padding(16.dp)) {
-                Text("Dinero libre este mes", style = MaterialTheme.typography.labelLarge)
-                Text(
-                    dinero(r.disponible),
-                    style = MaterialTheme.typography.headlineLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = if (r.disponible < 0) colorDe(TipoMovimiento.GASTO) else Color.Unspecified,
+        val c = CalculoMes.de(plan, estado.movimientos)
+
+        // Tarjeta principal: cuánto queda del sueldo este mes
+        TarjetaDestacada {
+            Text("Te queda este mes", style = MaterialTheme.typography.labelLarge, color = Color.White.copy(alpha = 0.85f))
+            Text(
+                dinero(c.disponible),
+                style = MaterialTheme.typography.displaySmall,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+            )
+            Text(
+                when {
+                    c.totalIngresos <= 0 -> "Registra tu sueldo en la pestaña Sueldo para empezar."
+                    c.desdePlan -> "De tu sueldo de ${dinero(c.sueldo)}" +
+                        if (c.otrosIngresos > 0) " + ${dinero(c.otrosIngresos)} de otros ingresos" else ""
+                    else -> "De tus ingresos de ${dinero(c.totalIngresos)}"
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.White.copy(alpha = 0.85f),
+            )
+            if (c.totalIngresos > 0) {
+                Spacer(Modifier.height(14.dp))
+                LinearProgressIndicator(
+                    progress = { c.fraccionUsada.toFloat() },
+                    modifier = Modifier.fillMaxWidth().height(8.dp),
+                    color = Color.White,
+                    trackColor = Color.White.copy(alpha = 0.25f),
+                    strokeCap = StrokeCap.Round,
+                    gapSize = 0.dp,
+                    drawStopIndicator = {},
                 )
-                if (r.ingresos > 0) {
-                    val usado = ((r.gastos + r.ahorroNeto) / r.ingresos).toFloat()
-                    Spacer(Modifier.height(12.dp))
-                    LinearProgressIndicator(
-                        progress = { usado.coerceIn(0f, 1f) },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "Has usado el ${(c.fraccionUsada * 100).toInt()} % (gastos y ahorro)",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.85f),
+                )
+            }
+            if (c.excedido > 0) {
+                Spacer(Modifier.height(10.dp))
+                Surface(color = Color.White, shape = MaterialTheme.shapes.small) {
                     Text(
-                        "Has usado el ${(usado * 100).toInt()} % de tus ingresos " +
-                            "(gastos + ahorro)",
-                        style = MaterialTheme.typography.bodySmall,
+                        "Te pasaste por ${dinero(c.excedido)} este mes",
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = colorDe(TipoMovimiento.GASTO),
                     )
                 }
             }
         }
 
         Card(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Cómo se calcula tu mes", style = MaterialTheme.typography.titleMedium)
-                LineaCalculo("Lo que ganaste", "Sueldo y otros ingresos", "+", r.ingresos, colorDe(TipoMovimiento.INGRESO))
-                LineaCalculo("Lo que gastaste", "Todos tus gastos del mes", "−", r.gastos, colorDe(TipoMovimiento.GASTO))
-                LineaCalculo("Lo que guardaste", "Dinero que pasaste a tus ahorros", "−", r.ahorros, colorDe(TipoMovimiento.AHORRO))
-                if (r.retiros > 0) {
-                    LineaCalculo("Lo que sacaste de ahorros", "Vuelve a estar disponible", "+", r.retiros, colorDe(TipoMovimiento.RETIRO_AHORRO))
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("Cómo se calcula", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                if (c.desdePlan) {
+                    LineaCalculo("Tu sueldo", "El que guardaste en la pestaña Sueldo", "+", c.sueldo, colorDe(TipoMovimiento.INGRESO))
+                    if (c.otrosIngresos > 0) {
+                        LineaCalculo("Otros ingresos", "Ingresos extra de este mes", "+", c.otrosIngresos, colorDe(TipoMovimiento.INGRESO))
+                    }
+                } else {
+                    LineaCalculo("Tus ingresos", "Todo lo que registraste como ingreso", "+", c.sueldo, colorDe(TipoMovimiento.INGRESO))
+                }
+                LineaCalculo("Tus gastos", "Todo lo que gastaste este mes", "−", c.gastos, colorDe(TipoMovimiento.GASTO))
+                LineaCalculo(
+                    "Tu ahorro",
+                    if (c.desdePlan) "Lo que decidiste ahorrar en tu plan" else "Lo que pasaste a ahorros",
+                    "−", c.ahorro, colorDe(TipoMovimiento.AHORRO),
+                )
+                if (c.retiros > 0) {
+                    LineaCalculo("Sacaste de ahorros", "Vuelve a estar disponible", "+", c.retiros, colorDe(TipoMovimiento.RETIRO_AHORRO))
                 }
                 HorizontalDivider()
-                LineaCalculo("Te queda disponible", "Dinero libre de este mes", "=", r.disponible, null, total = true)
-                if (r.ingresos > 0) {
-                    val tasa = (r.ahorroNeto / r.ingresos * 100).toInt()
-                    Text(
-                        "Este mes ahorraste el $tasa % de lo que ganaste.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                if (c.excedido > 0) {
+                    LineaCalculo("Te pasaste por", "Gastaste más de lo que tenías", "", c.excedido, colorDe(TipoMovimiento.GASTO), total = true)
+                } else {
+                    LineaCalculo("Te queda", "Dinero libre para el resto del mes", "=", c.disponible, null, total = true)
                 }
             }
         }
@@ -156,7 +189,7 @@ private fun BalanceGeneral(h: Resumen) {
             HorizontalDivider()
             LineaCalculo(
                 "Dinero libre", "Lo que deberías tener en tu cuenta o bolsillo para gastar",
-                "=", h.disponible, null, total = true,
+                "=", h.disponible.coerceAtLeast(0.0), null, total = true,
             )
 
             Spacer(Modifier.height(4.dp))

@@ -37,6 +37,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.misfinanzas.app.ui.theme.LogoM
 
 private enum class Modo { INGRESAR, REGISTRARSE, RECUPERAR }
 
@@ -77,6 +78,7 @@ fun PantallaAcceso(vm: SesionViewModel) {
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Spacer(Modifier.height(32.dp))
+            LogoM(88.dp)
             Text(
                 "Mis Finanzas",
                 style = MaterialTheme.typography.headlineLarge,
