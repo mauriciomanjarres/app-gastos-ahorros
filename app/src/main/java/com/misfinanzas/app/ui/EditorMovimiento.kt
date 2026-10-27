@@ -91,6 +91,15 @@ fun EditorMovimiento(
                     }
                 }
 
+                when (tipo) {
+                    TipoMovimiento.AHORRO -> "Se descuenta de tu dinero del mes. Si es dinero que ya tenías ahorrado, elige «Ahorro que ya tenía»."
+                    TipoMovimiento.AHORRO_EXISTENTE -> "Suma a tus ahorros sin descontarse de tu sueldo ni de tu dinero del mes."
+                    TipoMovimiento.RETIRO_AHORRO -> "Sacas dinero de tus ahorros y vuelve a estar disponible para gastar."
+                    else -> null
+                }?.let {
+                    Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+
                 OutlinedTextField(
                     value = montoTexto,
                     onValueChange = { nuevo -> montoTexto = nuevo.filter { it.isDigit() || it == '.' || it == ',' } },

@@ -174,7 +174,7 @@ private fun BalanceGeneral(h: Resumen) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            if (h.ingresos == 0.0 && h.gastos == 0.0 && h.ahorros == 0.0) {
+            if (h.ingresos == 0.0 && h.gastos == 0.0 && h.ahorros == 0.0 && h.existentes == 0.0) {
                 Text("Todavía no hay datos. Registra tu sueldo o un gasto para ver tu balance.")
                 return@Column
             }
@@ -195,14 +195,14 @@ private fun BalanceGeneral(h: Resumen) {
             Spacer(Modifier.height(4.dp))
             Subtitulo("2. Tus ahorros")
             LineaCalculo(
-                "Ahorros guardados", "Lo que has ahorrado menos lo que has retirado",
+                "Ahorros guardados", "Lo ahorrado + lo que ya tenías ahorrado − lo retirado",
                 "", h.ahorroNeto, colorDe(TipoMovimiento.AHORRO), total = true,
             )
 
             Spacer(Modifier.height(4.dp))
             Subtitulo("3. Todo tu dinero")
             LineaCalculo(
-                "Dinero libre + ahorros", "Lo que tienes en total (ganado − gastado)",
+                "Dinero libre + ahorros", "Todo lo que tienes en total",
                 "=", h.disponible + h.ahorroNeto, null, total = true,
             )
 

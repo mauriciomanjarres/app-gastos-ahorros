@@ -36,7 +36,7 @@ fun PantallaMovimientos(movimientos: List<Movimiento>, onSeleccionar: (Movimient
     LazyColumn(contentPadding = PaddingValues(bottom = 88.dp)) {
         items(movimientos, key = { it.id }) { m ->
             val signo = when (m.tipo) {
-                TipoMovimiento.INGRESO, TipoMovimiento.RETIRO_AHORRO -> "+"
+                TipoMovimiento.INGRESO, TipoMovimiento.RETIRO_AHORRO, TipoMovimiento.AHORRO_EXISTENTE -> "+"
                 TipoMovimiento.GASTO, TipoMovimiento.AHORRO -> "−"
             }
             ListItem(

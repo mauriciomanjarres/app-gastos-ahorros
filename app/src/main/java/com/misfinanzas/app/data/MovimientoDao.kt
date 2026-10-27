@@ -23,8 +23,8 @@ interface MovimientoDao {
 
     /** Ahorro neto (ahorros − retiros) agrupado por categoría, de todos los meses. */
     @Query(
-        "SELECT categoria, SUM(CASE WHEN tipo = 'AHORRO' THEN monto ELSE -monto END) AS total " +
-            "FROM movimientos WHERE usuarioId = :usuarioId AND tipo IN ('AHORRO', 'RETIRO_AHORRO') " +
+        "SELECT categoria, SUM(CASE WHEN tipo = 'RETIRO_AHORRO' THEN -monto ELSE monto END) AS total " +
+            "FROM movimientos WHERE usuarioId = :usuarioId AND tipo IN ('AHORRO', 'AHORRO_EXISTENTE', 'RETIRO_AHORRO') " +
             "GROUP BY categoria ORDER BY total DESC"
     )
     fun ahorrosPorCategoria(usuarioId: String): Flow<List<TotalPorCategoria>>

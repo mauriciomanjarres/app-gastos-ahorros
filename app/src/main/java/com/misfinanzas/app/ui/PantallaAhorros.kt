@@ -82,6 +82,15 @@ fun PantallaAhorros(
                 Text("Retirar")
             }
         }
+        OutlinedButton(onClick = { onAgregar(TipoMovimiento.AHORRO_EXISTENTE) }, modifier = Modifier.fillMaxWidth()) {
+            Text("Registrar ahorro que ya tenía")
+        }
+        Text(
+            "«Agregar ahorro» sale de tu sueldo del mes. «Ahorro que ya tenía» es dinero que ahorraste " +
+                "antes: suma a tu total pero no se descuenta de tu sueldo.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
 
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -128,6 +137,9 @@ fun PantallaAhorros(
                 Text("Este mes", style = MaterialTheme.typography.titleMedium)
                 Fila("Ahorrado", dinero(estado.resumen.ahorros), colorAhorro)
                 Fila("Retirado", dinero(estado.resumen.retiros), colorDe(TipoMovimiento.RETIRO_AHORRO))
+                if (estado.resumen.existentes > 0) {
+                    Fila("Ahorro que ya tenías", dinero(estado.resumen.existentes), colorAhorro)
+                }
             }
         }
 

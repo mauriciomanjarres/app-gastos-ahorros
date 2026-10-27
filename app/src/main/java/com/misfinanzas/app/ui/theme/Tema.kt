@@ -120,7 +120,7 @@ fun colorDe(tipo: TipoMovimiento): Color {
     return when (tipo) {
         TipoMovimiento.INGRESO -> if (oscuro) Color(0xFF6FD3A8) else Esmeralda
         TipoMovimiento.GASTO -> if (oscuro) Color(0xFFF28B82) else Color(0xFFC62828)
-        TipoMovimiento.AHORRO -> if (oscuro) Color(0xFF8AB4F8) else Color(0xFF1E5AA8)
+        TipoMovimiento.AHORRO, TipoMovimiento.AHORRO_EXISTENTE -> if (oscuro) Color(0xFF8AB4F8) else Color(0xFF1E5AA8)
         TipoMovimiento.RETIRO_AHORRO -> if (oscuro) Color(0xFFF0C26B) else Color(0xFFB7791F)
     }
 }

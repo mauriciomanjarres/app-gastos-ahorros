@@ -30,10 +30,13 @@ data class Resumen(
     val gastos: Double = 0.0,
     val ahorros: Double = 0.0,
     val retiros: Double = 0.0,
+    /** Ahorros que ya se tenían; no afectan el dinero libre. */
+    val existentes: Double = 0.0,
 ) {
     /** Dinero libre: lo que entra menos lo que se gasta y lo que se aparta para ahorro. */
     val disponible: Double get() = ingresos - gastos - ahorros + retiros
-    val ahorroNeto: Double get() = ahorros - retiros
+    /** Todo lo que hay ahorrado: lo ahorrado + lo que ya se tenía − lo retirado. */
+    val ahorroNeto: Double get() = ahorros + existentes - retiros
 
     companion object {
         fun de(totales: Map<TipoMovimiento, Double>) = Resumen(
@@ -41,6 +44,7 @@ data class Resumen(
             gastos = totales[TipoMovimiento.GASTO] ?: 0.0,
             ahorros = totales[TipoMovimiento.AHORRO] ?: 0.0,
             retiros = totales[TipoMovimiento.RETIRO_AHORRO] ?: 0.0,
+            existentes = totales[TipoMovimiento.AHORRO_EXISTENTE] ?: 0.0,
         )
     }
 }

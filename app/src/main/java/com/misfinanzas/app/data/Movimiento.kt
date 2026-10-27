@@ -8,6 +8,8 @@ enum class TipoMovimiento(val etiqueta: String) {
     INGRESO("Ingreso"),
     GASTO("Gasto"),
     AHORRO("Ahorro"),
+    /** Ahorro que ya existía antes de usar la app: suma a los ahorros pero no sale del sueldo. */
+    AHORRO_EXISTENTE("Ahorro que ya tenía"),
     RETIRO_AHORRO("Retiro de ahorro");
 
     val categorias: List<String>
@@ -17,7 +19,7 @@ enum class TipoMovimiento(val etiqueta: String) {
                 "Alimentación", "Vivienda", "Servicios", "Transporte", "Salud",
                 "Educación", "Entretenimiento", "Ropa", "Deudas", "Otros"
             )
-            AHORRO, RETIRO_AHORRO -> listOf("Fondo de emergencia", "Meta personal", "Inversión", "Otros")
+            AHORRO, AHORRO_EXISTENTE, RETIRO_AHORRO -> listOf("Fondo de emergencia", "Meta personal", "Inversión", "Otros")
         }
 }
 
