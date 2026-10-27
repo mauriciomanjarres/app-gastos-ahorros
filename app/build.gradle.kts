@@ -17,8 +17,22 @@ android {
         versionName = "1.0"
     }
 
+    // Firma fija para que cada APK nuevo se instale encima del anterior sin perder datos.
+    signingConfigs {
+        create("app") {
+            storeFile = file("firma-app.jks")
+            storePassword = "misfinanzas"
+            keyAlias = "misfinanzas"
+            keyPassword = "misfinanzas"
+        }
+    }
+
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("app")
+        }
         release {
+            signingConfig = signingConfigs.getByName("app")
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }

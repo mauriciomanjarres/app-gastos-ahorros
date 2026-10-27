@@ -11,7 +11,15 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
@@ -45,17 +53,43 @@ sealed interface Editor {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AppFinanzas(vm: FinanzasViewModel = viewModel()) {
+fun AppFinanzas(
+    nombre: String,
+    onCerrarSesion: () -> Unit,
+    vm: FinanzasViewModel = viewModel(),
+) {
     val mes by vm.mes.collectAsStateWithLifecycle()
     val estado by vm.estadoMes.collectAsStateWithLifecycle()
     val historico by vm.historico.collectAsStateWithLifecycle()
 
     var pestana by rememberSaveable { mutableStateOf(0) }
     var editor by remember { mutableStateOf<Editor?>(null) }
+    var confirmarSalida by remember { mutableStateOf(false) }
+    val snackbar = remember { SnackbarHostState() }
+    val alcance = rememberCoroutineScope()
+    fun avisar(texto: String) {
+        alcance.launch { snackbar.showSnackbar(texto, duration = SnackbarDuration.Short) }
+    }
 
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(title = { Text("Mis Finanzas", fontWeight = FontWeight.Bold) })
+            TopAppBar(
+                title = {
+                    Column {
+                        Text("Mis Finanzas", fontWeight = FontWeight.Bold)
+                        Text(
+                            "Hola, ${nombre.substringBefore(' ')}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { confirmarSalida = true }) {
+                        Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Cerrar sesión")
+                    }
+                },
+            )
         },
         bottomBar = {
             NavigationBar {
@@ -73,6 +107,7 @@ fun AppFinanzas(vm: FinanzasViewModel = viewModel()) {
                 )
             }
         },
+        snackbarHost = { SnackbarHost(snackbar) },
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = { editor = Editor.Nuevo },
@@ -94,9 +129,23 @@ fun AppFinanzas(vm: FinanzasViewModel = viewModel()) {
         EditorMovimiento(
             existente = (e as? Editor.Editar)?.movimiento,
             mesActual = mes,
-            onGuardar = { vm.guardar(it); editor = null },
-            onEliminar = { vm.eliminar(it); editor = null },
+            onGuardar = {
+                vm.guardar(it)
+                avisar(if (e is Editor.Editar) "Cambios guardados" else "${it.tipo.etiqueta} registrado")
+                editor = null
+            },
+            onEliminar = { vm.eliminar(it); avisar("Movimiento eliminado"); editor = null },
             onCerrar = { editor = null },
+        )
+    }
+
+    if (confirmarSalida) {
+        AlertDialog(
+            onDismissRequest = { confirmarSalida = false },
+            title = { Text("¿Cerrar sesión?") },
+            text = { Text("Tus datos quedan guardados. Necesitarás tu contraseña para volver a entrar.") },
+            confirmButton = { TextButton(onClick = { confirmarSalida = false; onCerrarSesion() }) { Text("Cerrar sesión") } },
+            dismissButton = { TextButton(onClick = { confirmarSalida = false }) { Text("Cancelar") } },
         )
     }
 }

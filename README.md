@@ -5,6 +5,8 @@ Todo se guarda en el teléfono (base de datos local, sin internet ni cuentas).
 
 ## Qué hace
 
+- **Cuenta con contraseña**: la primera vez creas tu usuario y contraseña; después la app pide
+  iniciar sesión. La contraseña se guarda cifrada (hash PBKDF2) solo en el teléfono.
 - **Registrar movimientos** de cuatro tipos: Ingreso, Gasto, Ahorro y Retiro de ahorro, con monto,
   categoría, descripción y fecha. Toca un movimiento para editarlo o eliminarlo.
 - **Resumen del mes**: ingresos, gastos, lo ahorrado, dinero disponible
@@ -15,9 +17,10 @@ Todo se guarda en el teléfono (base de datos local, sin internet ni cuentas).
 
 ## Cómo obtener el APK
 
-**Con GitHub (sin instalar nada):** sube este proyecto a un repositorio. La acción
-`Compilar APK` (`.github/workflows/build-apk.yml`) lo compila en cada push; descarga
-`MisFinanzas-apk` desde la pestaña *Actions* → última ejecución → *Artifacts*.
+**Descarga directa:** cada cambio en `main` se compila solo (`.github/workflows/build-apk.yml`)
+y el APK queda publicado en *Releases* → **Mis Finanzas (última versión)** → `MisFinanzas.apk`.
+Todas las versiones usan la misma firma (`app/firma-app.jks`), así que puedes instalar una nueva
+encima de la anterior sin perder tus datos.
 
 **Con Android Studio:** abre la carpeta del proyecto, espera a que sincronice y pulsa *Run*,
 o usa *Build → Build APK(s)*. Desde terminal: `./gradlew assembleDebug`
