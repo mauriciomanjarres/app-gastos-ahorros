@@ -13,6 +13,8 @@ data class Plan(
     val valorAhorro: Double = 10.0,
     val nombreMeta: String = "",
     val montoMeta: Double = 0.0,
+    /** Fecha (epochDay) del último pago de sueldo registrado, o null si aún no hay. */
+    val ultimoPago: Long? = null,
 ) {
     val ahorroMensual: Double
         get() = when (modoAhorro) {
@@ -37,6 +39,7 @@ class PlanStore(context: Context) {
         valorAhorro = prefs.leerNumero("$uid.valor", 10.0),
         nombreMeta = prefs.getString("$uid.nombreMeta", "") ?: "",
         montoMeta = prefs.leerNumero("$uid.montoMeta", 0.0),
+        ultimoPago = prefs.getString("$uid.ultimoPago", null)?.toLongOrNull(),
     )
 
     fun guardar(uid: String, plan: Plan) {
@@ -46,6 +49,7 @@ class PlanStore(context: Context) {
             .putString("$uid.valor", plan.valorAhorro.toString())
             .putString("$uid.nombreMeta", plan.nombreMeta)
             .putString("$uid.montoMeta", plan.montoMeta.toString())
+            .putString("$uid.ultimoPago", plan.ultimoPago?.toString())
             .apply()
     }
 

@@ -13,6 +13,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
@@ -37,6 +40,7 @@ import com.misfinanzas.app.data.ModoAhorro
 import com.misfinanzas.app.data.Plan
 import com.misfinanzas.app.data.TipoMovimiento
 import com.misfinanzas.app.ui.theme.colorDe
+import java.time.LocalDate
 import java.time.YearMonth
 import kotlin.math.roundToInt
 
@@ -46,7 +50,7 @@ fun PantallaSueldo(
     mes: YearMonth,
     estado: EstadoMes,
     onGuardarPlan: (Plan) -> Unit,
-    onRegistrarMes: (Plan) -> Unit,
+    onRegistrarMes: (Plan, Long) -> Unit,
 ) {
     // Se reinicia solo cuando el plan guardado cambia (al cargar o al guardar).
     var sueldoTexto by remember(plan) { mutableStateOf(numeroEditable(plan.sueldo)) }
@@ -65,7 +69,15 @@ fun PantallaSueldo(
         valorAhorro = if (modo == ModoAhorro.PORCENTAJE) porcentaje.toDouble() else parsearMonto(montoTexto) ?: 0.0,
     )
     val montoExcede = modo == ModoAhorro.MONTO && (parsearMonto(montoTexto) ?: 0.0) > sueldo
-    val yaRegistrado = estado.movimientos.any { it.descripcion == DESCRIPCION_SUELDO }
+    val sueldoDelMes = estado.movimientos.firstOrNull { it.descripcion == DESCRIPCION_SUELDO }
+    val yaRegistrado = sueldoDelMes != null
+
+    // Fecha de pago: se pone sola (la del pago ya registrado este mes, o la sugerida),
+    // y se puede cambiar con el calendario.
+    var fechaPago by remember(mes, sueldoDelMes?.fecha, plan.ultimoPago) {
+        mutableStateOf(sueldoDelMes?.fecha ?: fechaPagoSugerida(plan.ultimoPago, mes))
+    }
+    var elegirFecha by remember { mutableStateOf(false) }
 
     Column(
         Modifier
@@ -189,12 +201,34 @@ fun PantallaSueldo(
             }
         }
 
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("3. Fecha de pago", style = MaterialTheme.typography.titleMedium)
+                OutlinedButton(onClick = { elegirFecha = true }, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Filled.DateRange, contentDescription = null)
+                    Text("  ${fechaTexto(fechaPago)}")
+                }
+                Text(
+                    if (yaRegistrado) "Es la fecha del pago que ya registraste. Tócala si quieres cambiarla."
+                    else "Se pone sola con la fecha de hoy. Tócala si te pagaron otro día.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                plan.ultimoPago?.let { ultimo ->
+                    HorizontalDivider()
+                    val ultimaFecha = LocalDate.ofEpochDay(ultimo)
+                    Fila("Último pago", fechaTexto(ultimo), null)
+                    Fila("Próximo pago (aprox.)", fechaTexto(ultimaFecha.plusMonths(1).toEpochDay()), null)
+                }
+            }
+        }
+
         Button(
-            onClick = { onRegistrarMes(borrador) },
+            onClick = { onRegistrarMes(borrador, fechaPago) },
             enabled = sueldo > 0 && !montoExcede,
             modifier = Modifier.fillMaxWidth().height(52.dp),
         ) {
-            Text(if (yaRegistrado) "Actualizar sueldo y ahorro de ${mes.texto()}" else "Registrar sueldo y ahorro en ${mes.texto()}")
+            Text(if (yaRegistrado) "Actualizar pago de ${mes.texto()}" else "Registrar pago de sueldo")
         }
         OutlinedButton(
             onClick = { onGuardarPlan(borrador) },
@@ -208,6 +242,10 @@ fun PantallaSueldo(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.height(24.dp))
+    }
+
+    if (elegirFecha) {
+        DialogoFecha(fecha = fechaPago, onElegir = { fechaPago = it }, onCerrar = { elegirFecha = false })
     }
 }
 

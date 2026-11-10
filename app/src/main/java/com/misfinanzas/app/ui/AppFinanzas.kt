@@ -151,10 +151,9 @@ fun AppFinanzas(
                     mes = mes,
                     estado = estado,
                     onGuardarPlan = { vm.guardarPlan(it); avisar("Plan guardado") },
-                    onRegistrarMes = {
-                        vm.guardarPlan(it)
-                        vm.registrarSueldoDelMes(it)
-                        avisar("Sueldo y ahorro registrados en ${mes.texto()}")
+                    onRegistrarMes = { nuevoPlan, fecha ->
+                        vm.registrarSueldoDelMes(nuevoPlan, fecha)
+                        avisar("Pago registrado el ${fechaTexto(fecha)}")
                     },
                 )
                 2 -> PantallaAhorros(

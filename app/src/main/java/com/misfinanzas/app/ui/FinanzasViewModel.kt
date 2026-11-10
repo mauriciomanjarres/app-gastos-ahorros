@@ -118,12 +118,16 @@ class FinanzasViewModel(app: Application) : AndroidViewModel(app) {
      * Registra (o actualiza) en el mes visto el ingreso del sueldo y el ahorro del plan,
      * para que el resumen y el balance los tengan en cuenta.
      */
-    fun registrarSueldoDelMes(plan: Plan) = viewModelScope.launch {
+    fun registrarSueldoDelMes(plan: Plan, fecha: Long) = viewModelScope.launch {
         registroMutex.withLock {
-            val m = _mes.value
+            // El pago se registra en el mes de la fecha elegida.
+            val m = YearMonth.from(LocalDate.ofEpochDay(fecha))
             val uid = usuarioId.value
-            val hoy = LocalDate.now()
-            val fecha = (if (YearMonth.from(hoy) == m) hoy else m.atDay(1)).toEpochDay()
+            // El "último pago" solo avanza: registrar un mes anterior no lo cambia,
+            // pero corregir la fecha dentro del mismo mes sí.
+            val previo = plan.ultimoPago
+            val ultimo = if (previo == null || YearMonth.from(LocalDate.ofEpochDay(previo)) <= m) fecha else previo
+            guardarPlan(plan.copy(ultimoPago = ultimo))
             val desde = m.atDay(1).toEpochDay()
             val hasta = m.atEndOfMonth().toEpochDay()
 
@@ -143,7 +147,7 @@ class FinanzasViewModel(app: Application) : AndroidViewModel(app) {
                     monto = plan.sueldo,
                     categoria = "Salario",
                     descripcion = DESCRIPCION_SUELDO,
-                    fecha = sueldoPrevio?.fecha ?: fecha,
+                    fecha = fecha,
                     usuarioId = uid,
                 )
             )
@@ -155,7 +159,7 @@ class FinanzasViewModel(app: Application) : AndroidViewModel(app) {
                         monto = plan.ahorroMensual,
                         categoria = ahorroPrevio?.categoria ?: "Meta personal",
                         descripcion = DESCRIPCION_AHORRO,
-                        fecha = ahorroPrevio?.fecha ?: fecha,
+                        fecha = fecha,
                         usuarioId = uid,
                     )
                 )
